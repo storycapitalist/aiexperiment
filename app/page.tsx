@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+// Search 아이콘이 제대로 불러와졌는지 확인해 주세요.
 import { Plus, Link as LinkIcon, Trash2, ExternalLink, Bookmark, Settings2, X, Edit2, Check, Search } from 'lucide-react';
 
 interface Reference {
@@ -22,7 +23,7 @@ export default function LinkArchive() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tempCategory, setTempCategory] = useState('');
   
-  // 검색어 상태 추가
+  // [체크!] 검색어 상태가 있는지 확인하세요.
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -85,7 +86,7 @@ export default function LinkArchive() {
     setEditingId(null);
   };
 
-  // 검색 및 카테고리 필터링 통합 로직
+  // [체크!] 검색 필터링 로직이 활성화되어 있는지 확인하세요.
   const filteredLinks = links.filter(link => {
     const matchesTab = activeTab === '전체' || link.category === activeTab;
     const matchesSearch = 
@@ -100,11 +101,10 @@ export default function LinkArchive() {
         <h1 className="text-xl md:text-3xl font-bold mb-1 flex items-center gap-2">
           <Bookmark className="text-blue-600 w-5 h-5 md:w-6 md:h-6" /> 나만의 레퍼런스 아카이브
         </h1>
-        <p className="text-slate-500 text-xs md:text-base truncate">수만 개의 레퍼런스도 한 번에 찾는 검색형 보관함</p>
+        <p className="text-slate-500 text-xs md:text-base truncate">내용을 읽고 자동 분류하는 똑똑한 보관함</p>
       </header>
 
       <main className="max-w-6xl mx-auto">
-        {/* 카테고리 설정 섹션 */}
         {showCatEditor && (
           <section className="bg-blue-50 p-6 rounded-2xl border border-blue-100 mb-6 shadow-inner">
             <h2 className="font-bold mb-4 flex justify-between items-center text-blue-800 text-sm">카테고리 관리 <button onClick={() => setShowCatEditor(false)} className="text-blue-400"><X size={20}/></button></h2>
@@ -112,7 +112,7 @@ export default function LinkArchive() {
               {categories.map((cat) => (
                 <div key={cat} className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-blue-100 shadow-sm text-sm font-medium">
                   <span>{cat}</span>
-                  {cat !== '전체' && cat !== '미분류' && <button onClick={() => deleteCategory(cat)} className="text-red-300 hover:text-red-500"><Trash2 size={14} /></button>}
+                  {cat !== '전체' && cat !== '미분류' && <button onClick={() => { if (cat === '전체' || cat === '미분류') return; if (confirm(`'${cat}' 카테고리를 삭제할까요?`)) { setCategories(categories.filter(c => c !== cat)); setLinks(links.map(link => link.category === cat ? { ...link, category: '미분류' } : link)); if (activeTab === cat) setActiveTab('전체'); } }} className="text-red-300 hover:text-red-500"><Trash2 size={14} /></button>}
                 </div>
               ))}
             </div>
@@ -131,7 +131,7 @@ export default function LinkArchive() {
           </form>
         </section>
 
-        {/* --- 새로 추가된 검색 바 --- */}
+        {/* [체크!] 이 검색 바 코드가 실제 코드에 있는지 보세요. */}
         <div className="relative mb-6">
           <Search className="absolute left-4 top-3 text-slate-400 w-5 h-5" />
           <input 
@@ -149,7 +149,6 @@ export default function LinkArchive() {
           ))}
         </nav>
 
-        {/* 결과 리스트 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {filteredLinks.length > 0 ? filteredLinks.map((link) => (
             <div key={link.id} className="group bg-white border border-slate-200 rounded-2xl p-4 md:p-5 hover:border-blue-500/50 hover:shadow-lg transition-all relative">
