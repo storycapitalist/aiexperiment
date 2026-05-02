@@ -38,7 +38,6 @@ export default function LinkArchive() {
     localStorage.setItem('vibe-cats', JSON.stringify(categories));
   }, [links, categories]);
 
-  // 분석 범위를 '제목' + '설명' + 'URL 주소'까지 넓혔습니다.
   const autoTagCategory = (title: string, description: string, url: string) => {
     const combinedText = `${title} ${description} ${url}`.toLowerCase();
     
@@ -69,7 +68,6 @@ export default function LinkArchive() {
       const res = await fetch(`/api/preview?url=${encodeURIComponent(targetUrl)}`);
       const data = await res.json();
       
-      // 제목 뿐만 아니라 사이트 설명(description) 데이터도 활용합니다.
       const detectedCategory = autoTagCategory(data.title || "", data.description || "", targetUrl);
 
       if (detectedCategory !== "미분류" && !categories.includes(detectedCategory)) {
@@ -123,7 +121,8 @@ export default function LinkArchive() {
     <div className="min-h-screen bg-slate-50 text-slate-900 p-4 md:p-8 font-sans">
       <header className="max-w-6xl mx-auto mb-6">
         <h1 className="text-xl md:text-3xl font-bold mb-1 flex items-center gap-2">
-          <Bookmark className="text-blue-600 w-5 h-5 md:w-6 md:h-6" /> My Refs Lab
+          {/* 타이틀을 '나만의 레퍼런스 아카이브'로 변경했습니다 */}
+          <Bookmark className="text-blue-600 w-5 h-5 md:w-6 md:h-6" /> 나만의 레퍼런스 아카이브
         </h1>
         <p className="text-slate-500 text-xs md:text-base truncate">내용을 읽고 자동 분류하는 똑똑한 보관함</p>
       </header>
