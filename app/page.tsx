@@ -16,19 +16,31 @@ export default function LinkArchive() {
   const [links, setLinks] = useState<Reference[]>([]);
   const [url, setUrl] = useState('');
   const [activeTab, setActiveTab] = useState('전체');
+  
+  // 초기값은 반드시 필요한 '전체'와 '미분류'만 설정합니다.
   const [categories, setCategories] = useState(['전체', '미분류']);
   const [showCatEditor, setShowCatEditor] = useState(false);
   const [newCatName, setNewCatName] = useState('');
-
-  // 카테고리 수정을 위한 상태 추가
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tempCategory, setTempCategory] = useState('');
 
+  // 데이터 로드 시 구형 카테고리를 강제로 필터링합니다.
   useEffect(() => {
     const savedLinks = localStorage.getItem('vibe-links');
     const savedCats = localStorage.getItem('vibe-cats');
+    
     if (savedLinks) setLinks(JSON.parse(savedLinks));
-    if (savedCats) setCategories(JSON.parse(savedCats));
+    
+    if (savedCats) {
+      const parsedCats = JSON.parse(savedCats);
+      // '디자인', '개발', '기능 정의', '기타' 단어가 포함된 경우 싹 제거합니다.
+      const cleanedCats = parsedCats.filter((c: string) => 
+        !['디자인', '개발', '기능 정의', '기타'].includes(c)
+      );
+      // '전체'와 '미분류'를 포함한 중복 없는 리스트를 만듭니다.
+      const finalCats = Array.from(new Set(['전체', '미분류', ...cleanedCats]));
+      setCategories(finalCats);
+    }
   }, []);
 
   useEffect(() => {
@@ -63,7 +75,6 @@ export default function LinkArchive() {
       const res = await fetch(`/api/preview?url=${encodeURIComponent(targetUrl)}`);
       const data = await res.json();
       const pageTitle = data.title || targetUrl;
-
       const detectedCategory = autoTagCategory(pageTitle);
 
       if (detectedCategory !== "미분류" && !categories.includes(detectedCategory)) {
@@ -100,7 +111,6 @@ export default function LinkArchive() {
     }
   };
 
-  // 카테고리 변경 저장 함수
   const saveCategoryChange = (id: string) => {
     setLinks(links.map(link => 
       link.id === id ? { ...link, category: tempCategory } : link
@@ -123,36 +133,27 @@ export default function LinkArchive() {
     }
   };
 
-  const moveCategory = (index: number, direction: 'up' | 'down') => {
-    if (index === 0) return;
-    const newCats = [...categories];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex <= 0 || targetIndex >= newCats.length) return;
-    [newCats[index], newCats[targetIndex]] = [newCats[targetIndex], newCats[index]];
-    setCategories(newCats);
-  };
-
   const filteredLinks = activeTab === '전체' ? links : links.filter(link => link.category === activeTab);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-4 md:p-8 font-sans">
-      <header className="max-w-6xl mx-auto mb-6 text-center md:text-left">
-        <h1 className="text-xl md:text-3xl font-bold mb-1 flex items-center justify-center md:justify-start gap-2 whitespace-nowrap">
+      <header className="max-w-6xl mx-auto mb-6">
+        <h1 className="text-xl md:text-3xl font-bold mb-1 flex items-center gap-2 whitespace-nowrap">
           <Bookmark className="text-blue-600 w-5 h-5 md:w-6 md:h-6" /> My Refs Lab
         </h1>
-        <p className="text-slate-500 text-xs md:text-base">나만의 스마트 레퍼런스 아카이브</p>
+        <p className="text-slate-500 text-xs md:text-base truncate">URL만 넣으면 자동 태깅되는 스마트 보관함</p>
       </header>
 
       <main className="max-w-6xl mx-auto">
         {showCatEditor && (
           <section className="bg-blue-50 p-6 rounded-2xl border border-blue-100 mb-6 shadow-inner">
             <h2 className="font-bold mb-4 flex justify-between items-center text-blue-800 text-sm">
-              카테고리 관리
+              카테고리 관리 
               <button onClick={() => setShowCatEditor(false)} className="text-blue-400"><X size={20}/></button>
             </h2>
             <div className="flex flex-wrap gap-2 mb-4">
-              {categories.map((cat, idx) => (
-                <div key={cat} className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-blue-100 shadow-sm text-sm">
+              {categories.map((cat) => (
+                <div key={cat} className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-blue-100 shadow-sm text-sm font-medium">
                   <span>{cat}</span>
                   {cat !== '전체' && cat !== '미분류' && (
                     <button onClick={() => deleteCategory(cat)} className="text-red-300 hover:text-red-500"><Trash2 size={14} /></button>
@@ -160,13 +161,13 @@ export default function LinkArchive() {
                 </div>
               ))}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 bg-white p-2 rounded-xl border border-blue-100">
               <input 
                 type="text" 
                 value={newCatName}
                 onChange={(e) => setNewCatName(e.target.value)}
-                placeholder="새 카테고리 이름"
-                className="flex-1 bg-white px-3 py-2 text-sm rounded-lg border border-blue-100 outline-none"
+                placeholder="직접 추가할 카테고리"
+                className="flex-1 bg-transparent px-3 py-2 text-sm outline-none"
               />
               <button onClick={addCategory} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold">추가</button>
             </div>
@@ -193,7 +194,7 @@ export default function LinkArchive() {
                 onChange={(e) => setUrl(e.target.value)}
               />
             </div>
-            <button className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-sm">
+            <button className="bg-blue-600 hover:bg-blue-500 transition-colors px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-white text-sm">
               <Plus size={18} /> 저장하기
             </button>
           </form>
@@ -207,7 +208,7 @@ export default function LinkArchive() {
               className={`px-5 py-1.5 rounded-full whitespace-nowrap text-sm transition-all ${
                 activeTab === tab 
                 ? 'bg-blue-600 text-white font-bold' 
-                : 'bg-white text-slate-600 border border-slate-200'
+                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
               }`}
             >
               {tab}
@@ -219,7 +220,6 @@ export default function LinkArchive() {
           {filteredLinks.map((link) => (
             <div key={link.id} className="group bg-white border border-slate-200 rounded-2xl p-4 md:p-5 hover:border-blue-500/50 hover:shadow-lg transition-all relative">
               <div className="flex justify-between items-center mb-4">
-                {/* 카테고리 표시 및 수정 모드 */}
                 {editingId === link.id ? (
                   <div className="flex items-center gap-1">
                     <select 
@@ -247,9 +247,7 @@ export default function LinkArchive() {
                   </div>
                 )}
                 
-                <button onClick={() => deleteLink(link.id)} className="text-slate-300 hover:text-red-400 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                  <Trash2 size={16} />
-                </button>
+                <button onClick={() => deleteLink(link.id)} className="text-slate-300 hover:text-red-400 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"><Trash2 size={16} /></button>
               </div>
               
               <div className="w-full h-32 md:h-40 bg-slate-100 rounded-xl mb-4 overflow-hidden border border-slate-100 flex items-center justify-center">
