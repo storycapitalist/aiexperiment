@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Link as LinkIcon, Trash2, ExternalLink, Bookmark, Settings2, X, Edit2, Check } from 'lucide-react';
+import { Plus, Link as LinkIcon, Trash2, ExternalLink, Bookmark, Settings2, X, Edit2, Check, Search } from 'lucide-react';
 
 interface Reference {
   id: string;
@@ -21,6 +21,9 @@ export default function LinkArchive() {
   const [newCatName, setNewCatName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tempCategory, setTempCategory] = useState('');
+  
+  // 검색어 상태 추가
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const savedLinks = localStorage.getItem('vibe-links');
@@ -40,7 +43,6 @@ export default function LinkArchive() {
 
   const autoTagCategory = (title: string, description: string, url: string) => {
     const combinedText = `${title} ${description} ${url}`.toLowerCase();
-    
     const keywords: { [key: string]: string[] } = {
       "디자인": ["디자인", "design", "ui", "ux", "font", "color", "layout", "아이콘", "이미지", "포토샵", "피그마", "figma"],
       "개발": ["개발", "dev", "code", "coding", "github", "git", "api", "stack", "react", "next", "script", "엔지니어", "프로그래밍"],
@@ -49,11 +51,8 @@ export default function LinkArchive() {
       "도구": ["툴", "tool", "service", "ai", "자동화", "업무", "생산성", "플랫폼", "솔루션"],
       "블로그": ["blog", "velog", "tistory", "brunch", "포스트", "기록"]
     };
-
     for (const [cat, words] of Object.entries(keywords)) {
-      if (words.some(word => combinedText.includes(word))) {
-        return cat;
-      }
+      if (words.some(word => combinedText.includes(word))) return cat;
     }
     return "미분류";
   };
@@ -61,29 +60,15 @@ export default function LinkArchive() {
   const addLink = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url) return;
-
     const targetUrl = url.startsWith('http') ? url : `https://${url}`;
-
     try {
       const res = await fetch(`/api/preview?url=${encodeURIComponent(targetUrl)}`);
       const data = await res.json();
-      
       const detectedCategory = autoTagCategory(data.title || "", data.description || "", targetUrl);
-
       if (detectedCategory !== "미분류" && !categories.includes(detectedCategory)) {
         setCategories(prev => [...prev, detectedCategory]);
       }
-
-      const newLink: Reference = {
-        id: Date.now().toString(),
-        url: targetUrl,
-        title: data.title || targetUrl,
-        category: detectedCategory,
-        date: new Date().toLocaleDateString(),
-        image: data.image,
-      };
-
-      setLinks([newLink, ...links]);
+      setLinks([{ id: Date.now().toString(), url: targetUrl, title: data.title || targetUrl, category: detectedCategory, date: new Date().toLocaleDateString(), image: data.image }, ...links]);
       setUrl('');
     } catch (error) {
       setLinks([{ id: Date.now().toString(), url: targetUrl, title: targetUrl, category: "미분류", date: new Date().toLocaleDateString() }, ...links]);
@@ -100,34 +85,26 @@ export default function LinkArchive() {
     setEditingId(null);
   };
 
-  const addCategory = () => {
-    if (!newCatName || categories.includes(newCatName)) return;
-    setCategories([...categories, newCatName]);
-    setNewCatName('');
-  };
-
-  const deleteCategory = (catName: string) => {
-    if (catName === '전체' || catName === '미분류') return;
-    if (confirm(`'${catName}' 카테고리를 삭제할까요?`)) {
-      setCategories(categories.filter(c => c !== catName));
-      setLinks(links.map(link => link.category === catName ? { ...link, category: '미분류' } : link));
-      if (activeTab === catName) setActiveTab('전체');
-    }
-  };
-
-  const filteredLinks = activeTab === '전체' ? links : links.filter(link => link.category === activeTab);
+  // 검색 및 카테고리 필터링 통합 로직
+  const filteredLinks = links.filter(link => {
+    const matchesTab = activeTab === '전체' || link.category === activeTab;
+    const matchesSearch = 
+      link.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      link.url.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesTab && matchesSearch;
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-4 md:p-8 font-sans">
       <header className="max-w-6xl mx-auto mb-6">
         <h1 className="text-xl md:text-3xl font-bold mb-1 flex items-center gap-2">
-          {/* 타이틀을 '나만의 레퍼런스 아카이브'로 변경했습니다 */}
           <Bookmark className="text-blue-600 w-5 h-5 md:w-6 md:h-6" /> 나만의 레퍼런스 아카이브
         </h1>
-        <p className="text-slate-500 text-xs md:text-base truncate">내용을 읽고 자동 분류하는 똑똑한 보관함</p>
+        <p className="text-slate-500 text-xs md:text-base truncate">수만 개의 레퍼런스도 한 번에 찾는 검색형 보관함</p>
       </header>
 
       <main className="max-w-6xl mx-auto">
+        {/* 카테고리 설정 섹션 */}
         {showCatEditor && (
           <section className="bg-blue-50 p-6 rounded-2xl border border-blue-100 mb-6 shadow-inner">
             <h2 className="font-bold mb-4 flex justify-between items-center text-blue-800 text-sm">카테고리 관리 <button onClick={() => setShowCatEditor(false)} className="text-blue-400"><X size={20}/></button></h2>
@@ -141,7 +118,7 @@ export default function LinkArchive() {
             </div>
             <div className="flex gap-2 bg-white p-2 rounded-xl border border-blue-100">
               <input type="text" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder="직접 추가할 카테고리" className="flex-1 bg-transparent px-3 py-2 text-sm outline-none" />
-              <button onClick={addCategory} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold">추가</button>
+              <button onClick={() => { if (!newCatName || categories.includes(newCatName)) return; setCategories([...categories, newCatName]); setNewCatName(''); }} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold">추가</button>
             </div>
           </section>
         )}
@@ -154,14 +131,27 @@ export default function LinkArchive() {
           </form>
         </section>
 
+        {/* --- 새로 추가된 검색 바 --- */}
+        <div className="relative mb-6">
+          <Search className="absolute left-4 top-3 text-slate-400 w-5 h-5" />
+          <input 
+            type="text"
+            placeholder="링크 제목이나 주소로 검색해보세요"
+            className="w-full bg-white border border-slate-200 rounded-2xl py-3 pl-12 pr-4 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
         <nav className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide">
           {categories.map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)} className={`px-5 py-1.5 rounded-full whitespace-nowrap text-sm transition-all ${activeTab === tab ? 'bg-blue-600 text-white font-bold' : 'bg-white text-slate-600 border border-slate-200'}`}>{tab}</button>
           ))}
         </nav>
 
+        {/* 결과 리스트 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {filteredLinks.map((link) => (
+          {filteredLinks.length > 0 ? filteredLinks.map((link) => (
             <div key={link.id} className="group bg-white border border-slate-200 rounded-2xl p-4 md:p-5 hover:border-blue-500/50 hover:shadow-lg transition-all relative">
               <div className="flex justify-between items-center mb-4">
                 {editingId === link.id ? (
@@ -178,7 +168,12 @@ export default function LinkArchive() {
               <p className="text-slate-500 text-xs md:text-sm mb-4 truncate">{link.url}</p>
               <div className="flex justify-between items-center"><span className="text-slate-400 text-[10px] md:text-xs">{link.date}</span><a href={link.url} target="_blank" className="text-blue-600 hover:text-blue-500 flex items-center gap-1 text-xs md:text-sm font-medium">방문하기 <ExternalLink size={12} /></a></div>
             </div>
-          ))}
+          )) : (
+            <div className="col-span-full py-20 text-center text-slate-400">
+              <Search className="mx-auto mb-4 opacity-20" size={48} />
+              검색 결과가 없습니다.
+            </div>
+          )}
         </div>
       </main>
     </div>
