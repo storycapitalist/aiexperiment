@@ -160,7 +160,9 @@ export default function LinkArchive() {
 
         {/* 2. URL 입력 섹션 */}
         <section className="bg-white p-6 rounded-2xl border border-slate-200 mb-10 shadow-sm">
-          <form onSubmit={addLink} className="flex flex-col md:flex-row gap-4">
+          <button className="w-full md:w-auto bg-blue-600 hover:bg-blue-500 transition-colors px-6 py-4 rounded-xl font-bold flex items-center justify-center gap-2 text-white">
+            <Plus size={20} /> 저장하기
+          </button>
             <div className="flex-1 relative">
               <LinkIcon className="absolute left-3 top-3.5 text-slate-400 w-5 h-5" />
               <input
